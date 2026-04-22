@@ -1,109 +1,84 @@
 #!/bin/bash
+# ==============================================================================
+# validate.sh
+# ==============================================================================
+# Uses SSM to run curl from each EC2 instance to the other two, proving
+# cross-region connectivity through the Transit Gateway.
+# ==============================================================================
 
-# Set the default AWS region for all AWS CLI commands.
-export AWS_DEFAULT_REGION=us-east-2
+set -euo pipefail
 
-# Get the private IP address of the running Windows instance named 'windows-instance'.
-windows_ip=$(aws ec2 describe-instances \
-  --filters "Name=tag:Name,Values=windows-instance" "Name=instance-state-name,Values=running" \
-  --query "Reservations[*].Instances[*].PrivateIpAddress" \
-  --output text | head -n1)
+# ------------------------------------------------------------------------------
+# Collect instance IDs and private IPs from Terraform outputs
+# ------------------------------------------------------------------------------
+pushd 02-tgw > /dev/null
+VPC1_ID=$(terraform output -raw vpc1_instance_id)
+VPC2_ID=$(terraform output -raw vpc2_instance_id)
+VPC3_ID=$(terraform output -raw vpc3_instance_id)
 
-# Exit if no Windows instance is found.
-if [[ -z "$windows_ip" ]]; then
-  echo "No running EC2 instance found with name 'windows-instance'. Exiting."
-  exit 1
-fi
+VPC1_IP=$(terraform output -raw vpc1_private_ip)
+VPC2_IP=$(terraform output -raw vpc2_private_ip)
+VPC3_IP=$(terraform output -raw vpc3_private_ip)
+popd > /dev/null
 
-# Get the instance ID for the Windows instance using its private IP.
-windows_id=$(aws ec2 describe-instances \
-  --filters "Name=private-ip-address,Values=$windows_ip" \
-  --query "Reservations[0].Instances[0].InstanceId" \
-  --output text)
+echo "NOTE: VPC1 us-east-1  instance=${VPC1_ID}  ip=${VPC1_IP}"
+echo "NOTE: VPC2 us-east-2  instance=${VPC2_ID}  ip=${VPC2_IP}"
+echo "NOTE: VPC3 us-west-2  instance=${VPC3_ID}  ip=${VPC3_IP}"
 
-echo "NOTE: Private IP address for Windows server is '$windows_ip'"
-echo "NOTE: CLI to connect to windows - 'aws ssm start-session --target $windows_id --region $AWS_DEFAULT_REGION'"
+# ------------------------------------------------------------------------------
+# Helper: send an SSM shell command, wait for it, and print the output
+# ------------------------------------------------------------------------------
+run_ssm_check() {
+  local region="$1"
+  local instance_id="$2"
+  local from_label="$3"
+  local target_ip="$4"
+  local to_label="$5"
 
-# Get the private IP address of the running Ubuntu instance named 'ubuntu-instance'.
-ubuntu_ip=$(aws ec2 describe-instances \
-  --filters "Name=tag:Name,Values=ubuntu-instance" "Name=instance-state-name,Values=running" \
-  --query "Reservations[*].Instances[*].PrivateIpAddress" \
-  --output text | head -n1)
+  echo ""
+  echo "NOTE: [${from_label}] --> [${to_label}]  (curl http://${target_ip})"
 
-# Exit if no Ubuntu instance is found.
-if [[ -z "$ubuntu_ip" ]]; then
-  echo "No running EC2 instance found with name 'ubuntu-instance'. Exiting."
-  exit 1
-fi
+  cmd_id=$(aws ssm send-command \
+    --region "${region}" \
+    --instance-ids "${instance_id}" \
+    --document-name "AWS-RunShellScript" \
+    --parameters "{\"commands\":[\"curl -s --max-time 5 http://${target_ip}\"]}" \
+    --query "Command.CommandId" \
+    --output text)
 
-# Get the instance ID for the Ubuntu instance using its private IP.
-ubuntu_id=$(aws ec2 describe-instances \
-  --filters "Name=private-ip-address,Values=$ubuntu_ip" \
-  --query "Reservations[0].Instances[0].InstanceId" \
-  --output text)
+  # Poll until the command reaches a terminal state
+  while true; do
+    status=$(aws ssm get-command-invocation \
+      --region "${region}" \
+      --command-id "${cmd_id}" \
+      --instance-id "${instance_id}" \
+      --query "Status" \
+      --output text 2>/dev/null || echo "Pending")
+    [[ "$status" == "Success" || "$status" == "Failed" || "$status" == "Cancelled" ]] && break
+    sleep 3
+  done
 
-echo "NOTE: Private IP address for Ubuntu server is '$ubuntu_ip'"
-echo "NOTE: CLI to connect to ubuntu - 'aws ssm start-session --target $ubuntu_id --region $AWS_DEFAULT_REGION'"
+  output=$(aws ssm get-command-invocation \
+    --region "${region}" \
+    --command-id "${cmd_id}" \
+    --instance-id "${instance_id}" \
+    --query "StandardOutputContent" \
+    --output text)
 
-# Send an SSM command to the Windows instance to test connectivity to the Ubuntu instance using curl.
-echo "NOTE: Sending SSM command to Windows instance to validate connectivity to Ubuntu..."
-win_command_id=$(aws ssm send-command \
-  --document-name "AWS-RunPowerShellScript" \
-  --document-version "1" \
-  --targets '[{"Key":"tag:Name","Values":["windows-instance"]}]' \
-  --parameters "{\"workingDirectory\":[\"\"],\"executionTimeout\":[\"3600\"],\"commands\":[\"curl.exe $ubuntu_ip\"]}" \
-  --timeout-seconds 600 \
-  --max-concurrency "50" \
-  --max-errors "0" \
-  --query "Command.CommandId" \
-  --output text)
+  echo "NOTE: Response: ${output}"
+}
 
-# Send an SSM command to the Ubuntu instance to test connectivity to the Windows instance using curl.
-echo "NOTE: Sending SSM command to Ubuntu instance to validate connectivity to Windows..."
-ubuntu_command_id=$(aws ssm send-command \
-  --document-name "AWS-RunShellScript" \
-  --document-version "1" \
-  --targets '[{"Key":"tag:Name","Values":["ubuntu-instance"]}]' \
-  --parameters "{\"workingDirectory\":[\"\"],\"executionTimeout\":[\"3600\"],\"commands\":[\"curl $windows_ip\"]}" \
-  --timeout-seconds 600 \
-  --max-concurrency "50" \
-  --max-errors "0" \
-  --query "Command.CommandId" \
-  --output text)
+# ------------------------------------------------------------------------------
+# Run six checks — every instance curls the other two
+# ------------------------------------------------------------------------------
+run_ssm_check "us-east-1" "${VPC1_ID}" "VPC1 us-east-1" "${VPC2_IP}" "VPC2 us-east-2"
+run_ssm_check "us-east-1" "${VPC1_ID}" "VPC1 us-east-1" "${VPC3_IP}" "VPC3 us-west-2"
 
-# Allow time for commands to start.
-echo "NOTE: Waiting for SSM commands to finish..."
-sleep 5
+run_ssm_check "us-east-2" "${VPC2_ID}" "VPC2 us-east-2" "${VPC1_IP}" "VPC1 us-east-1"
+run_ssm_check "us-east-2" "${VPC2_ID}" "VPC2 us-east-2" "${VPC3_IP}" "VPC3 us-west-2"
 
-# Poll for completion of both SSM commands.
-while true; do
-  count=$(aws ssm list-commands \
-    --query "length(Commands[?Status=='InProgress' || Status=='Pending'])" \
-    --output text | head -n 1)
+run_ssm_check "us-west-2" "${VPC3_ID}" "VPC3 us-west-2" "${VPC1_IP}" "VPC1 us-east-1"
+run_ssm_check "us-west-2" "${VPC3_ID}" "VPC3 us-west-2" "${VPC2_IP}" "VPC2 us-east-2"
 
-  if [[ "$count" == "0" ]]; then
-    echo "NOTE: All SSM commands have completed."
-    break
-  fi
-
-  echo "WARNING: Still waiting... $count command(s) in progress."
-  sleep 20
-done
-
-# Retrieve and print the output from the Windows instance's curl command.
-response=$(aws ssm get-command-invocation \
-  --command-id "$win_command_id" \
-  --instance-id "$windows_id" \
-  --query "StandardOutputContent" \
-  --output text)
-
-echo "NOTE: Response from Windows: $response"
-
-# Retrieve and print the output from the Ubuntu instance's curl command.
-response=$(aws ssm get-command-invocation \
-  --command-id "$ubuntu_command_id" \
-  --instance-id "$ubuntu_id" \
-  --query "StandardOutputContent" \
-  --output text)
-
-echo "NOTE: Response from Ubuntu: $response"
+echo ""
+echo "NOTE: Validation complete."

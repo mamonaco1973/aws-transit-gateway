@@ -1,84 +1,81 @@
 #!/bin/bash
+# ==============================================================================
+# apply.sh
+# ==============================================================================
+# Deploys the transit gateway demo in two stages:
+#   01-networking : VPCs, subnets, IGWs, route tables, security groups
+#   02-tgw        : Transit Gateways, peering, routes, EC2 instances
+#
+# Requires: aws, terraform, jq
+# ==============================================================================
 
-# Set the default AWS region to us-east-2 for all AWS CLI commands.
-export AWS_DEFAULT_REGION=us-east-2
+set -euo pipefail
 
-# Run the environment check script. Exit immediately if the check fails.
+# ------------------------------------------------------------------------------
+# Pre-flight
+# ------------------------------------------------------------------------------
+echo "NOTE: Running environment validation..."
 ./check_env.sh
-if [ $? -ne 0 ]; then
-  echo "ERROR: Environment check failed. Exiting."
-  exit 1
-fi
 
-# Navigate to the Terraform configuration directory for SSM.
-cd 01-ssm 
+# ==============================================================================
+# STAGE 01 — NETWORKING
+# ==============================================================================
+echo "NOTE: Stage 01 — provisioning VPCs, subnets, and security groups..."
 
-# Initialize Terraform to download required providers and set up the backend.
+pushd 01-networking > /dev/null
 terraform init
-
-# Apply the Terraform plan automatically without prompting for approval.
 terraform apply -auto-approve
 
-# Return to the root directory to continue the script.
-cd ..
+VPC1_ID=$(terraform output -raw vpc1_id)
+VPC2_ID=$(terraform output -raw vpc2_id)
+VPC3_ID=$(terraform output -raw vpc3_id)
 
-# Inform the user we're waiting for EC2 instances to fully initialize.
-echo "NOTE: Waiting for instances to be ready..."
+SUBNET1_ID=$(terraform output -raw subnet1_id)
+SUBNET2_ID=$(terraform output -raw subnet2_id)
+SUBNET3_ID=$(terraform output -raw subnet3_id)
 
-# Pause for 60 seconds to allow instances time to start up and become SSM-accessible.
-sleep 60
+RT1_ID=$(terraform output -raw rt1_id)
+RT2_ID=$(terraform output -raw rt2_id)
+RT3_ID=$(terraform output -raw rt3_id)
 
-# Send SSM command to install Apache on the Ubuntu instance.
+PUBLIC_RT1_ID=$(terraform output -raw public_rt1_id)
 
-echo "NOTE: Running SSM command to install Apache on Ubuntu instance..."
+SG1_ID=$(terraform output -raw sg1_id)
+SG2_ID=$(terraform output -raw sg2_id)
+SG3_ID=$(terraform output -raw sg3_id)
+popd > /dev/null
 
-aws ssm send-command \
-  --document-name "InstallApacheOnUbuntu" \
-  --document-version "1" \
-  --targets '[{"Key":"tag:Name","Values":["ubuntu-instance"]}]' \
-  --parameters '{}' \
-  --timeout-seconds 600 \
-  --max-concurrency "50" \
-  --max-errors "0" > /dev/null
+echo "NOTE: vpc1=${VPC1_ID}  vpc2=${VPC2_ID}  vpc3=${VPC3_ID}"
 
-# Send SSM command to install IIS and Hello World site on the Windows instance.
+# ==============================================================================
+# STAGE 02 — TRANSIT GATEWAY + EC2
+# ==============================================================================
+echo "NOTE: Stage 02 — deploying Transit Gateways, peering, and EC2 instances..."
 
-echo "NOTE: Running SSM command to install IIS on Windows instance..."
+pushd 02-tgw > /dev/null
+terraform init
+terraform apply -auto-approve \
+  -var="vpc1_id=${VPC1_ID}"       \
+  -var="vpc2_id=${VPC2_ID}"       \
+  -var="vpc3_id=${VPC3_ID}"       \
+  -var="subnet1_id=${SUBNET1_ID}" \
+  -var="subnet2_id=${SUBNET2_ID}" \
+  -var="subnet3_id=${SUBNET3_ID}" \
+  -var="rt1_id=${RT1_ID}"               \
+  -var="rt2_id=${RT2_ID}"               \
+  -var="rt3_id=${RT3_ID}"               \
+  -var="public_rt1_id=${PUBLIC_RT1_ID}" \
+  -var="sg1_id=${SG1_ID}"               \
+  -var="sg2_id=${SG2_ID}"         \
+  -var="sg3_id=${SG3_ID}"
+popd > /dev/null
 
-aws ssm send-command \
-  --document-name "InstallIIS" \
-  --document-version "1" \
-  --targets '[{"Key":"tag:Name","Values":["windows-instance"]}]' \
-  --parameters '{}' \
-  --timeout-seconds 600 \
-  --max-concurrency "50" \
-  --max-errors "0"  > /dev/null
+# Wait for instances to finish user-data (nginx install + SSM registration)
+echo "NOTE: Waiting 120 seconds for instances to initialize..."
+sleep 120
 
-# Notify user that we are monitoring the SSM command executions.
-echo "NOTE: Waiting for SSM commands to finish..."
-sleep 10  # Initial delay before checking status
-
-# Continuously check for any SSM commands still in progress or pending.
-while true; do
-
-  # Count the number of commands still in progress or pending.
-
-  count=$(aws ssm list-commands \
-    --query "length(Commands[?Status=='InProgress' || Status=='Pending'])" \
-    --output text | head -n 1)
-
-  # Exit loop if no commands are still running.
-  if [[ "$count" == "0" ]]; then
-    echo "NOTE: All SSM commands have completed."
-    break
-  fi
-
-  # Display how many commands are still running and wait before checking again.
-  echo "WARNING: Still waiting... $count command(s) in progress."
-  sleep 10
-done
-
-# Run the validation script to confirm successful deployment and configuration.
-echo "NOTE: Running validation script..."
-
+# ==============================================================================
+# Validation
+# ==============================================================================
+echo "NOTE: Running post-deployment validation..."
 ./validate.sh
