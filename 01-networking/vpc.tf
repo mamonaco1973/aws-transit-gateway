@@ -5,7 +5,7 @@
 
 resource "aws_vpc" "vpc1" {
   provider             = aws.us_east_1
-  cidr_block           = "10.0.0.0/16"
+  cidr_block           = "10.0.0.0/27"
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags = { Name = "tgw-vpc1" }
@@ -14,7 +14,7 @@ resource "aws_vpc" "vpc1" {
 resource "aws_subnet" "public1" {
   provider          = aws.us_east_1
   vpc_id            = aws_vpc.vpc1.id
-  cidr_block        = "10.0.0.0/24"
+  cidr_block        = "10.0.0.0/28"
   availability_zone = "us-east-1a"
   tags = { Name = "tgw-public1" }
 }
@@ -22,7 +22,7 @@ resource "aws_subnet" "public1" {
 resource "aws_subnet" "private1" {
   provider          = aws.us_east_1
   vpc_id            = aws_vpc.vpc1.id
-  cidr_block        = "10.0.1.0/24"
+  cidr_block        = "10.0.0.16/28"
   availability_zone = "us-east-1a"
   tags = { Name = "tgw-private1" }
 }
@@ -93,7 +93,7 @@ resource "aws_route_table_association" "private_rta1" {
 
 resource "aws_vpc" "vpc2" {
   provider             = aws.us_east_2
-  cidr_block           = "172.16.0.0/16"
+  cidr_block           = "172.16.0.0/28"
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags = { Name = "tgw-vpc2" }
@@ -102,7 +102,7 @@ resource "aws_vpc" "vpc2" {
 resource "aws_subnet" "private2" {
   provider          = aws.us_east_2
   vpc_id            = aws_vpc.vpc2.id
-  cidr_block        = "172.16.1.0/24"
+  cidr_block        = "172.16.0.0/28"
   availability_zone = "us-east-2a"
   tags = { Name = "tgw-private2" }
 }
@@ -126,7 +126,7 @@ resource "aws_route_table_association" "private_rta2" {
 
 resource "aws_vpc" "vpc3" {
   provider             = aws.us_west_2
-  cidr_block           = "192.168.0.0/16"
+  cidr_block           = "192.168.0.0/28"
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags = { Name = "tgw-vpc3" }
@@ -135,7 +135,7 @@ resource "aws_vpc" "vpc3" {
 resource "aws_subnet" "private3" {
   provider          = aws.us_west_2
   vpc_id            = aws_vpc.vpc3.id
-  cidr_block        = "192.168.1.0/24"
+  cidr_block        = "192.168.0.0/28"
   availability_zone = "us-west-2a"
   tags = { Name = "tgw-private3" }
 }

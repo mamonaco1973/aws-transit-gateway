@@ -101,7 +101,7 @@ resource "aws_ec2_transit_gateway_peering_attachment_accepter" "accept_ue2_uw2" 
 
 resource "aws_ec2_transit_gateway_route" "tgw1_to_vpc2" {
   provider                       = aws.us_east_1
-  destination_cidr_block         = "172.16.0.0/16"
+  destination_cidr_block         = "172.16.0.0/28"
   transit_gateway_route_table_id = aws_ec2_transit_gateway.tgw1.association_default_route_table_id
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_peering_attachment.peer_ue1_ue2.id
   depends_on                     = [aws_ec2_transit_gateway_peering_attachment_accepter.accept_ue1_ue2]
@@ -109,7 +109,7 @@ resource "aws_ec2_transit_gateway_route" "tgw1_to_vpc2" {
 
 resource "aws_ec2_transit_gateway_route" "tgw1_to_vpc3" {
   provider                       = aws.us_east_1
-  destination_cidr_block         = "192.168.0.0/16"
+  destination_cidr_block         = "192.168.0.0/28"
   transit_gateway_route_table_id = aws_ec2_transit_gateway.tgw1.association_default_route_table_id
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_peering_attachment.peer_ue1_uw2.id
   depends_on                     = [aws_ec2_transit_gateway_peering_attachment_accepter.accept_ue1_uw2]
@@ -130,7 +130,7 @@ resource "aws_ec2_transit_gateway_route" "tgw1_default" {
 
 resource "aws_ec2_transit_gateway_route" "tgw2_to_vpc1" {
   provider                       = aws.us_east_2
-  destination_cidr_block         = "10.0.0.0/16"
+  destination_cidr_block         = "10.0.0.0/27"
   transit_gateway_route_table_id = aws_ec2_transit_gateway.tgw2.association_default_route_table_id
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_peering_attachment.peer_ue1_ue2.id
   depends_on                     = [aws_ec2_transit_gateway_peering_attachment_accepter.accept_ue1_ue2]
@@ -138,7 +138,7 @@ resource "aws_ec2_transit_gateway_route" "tgw2_to_vpc1" {
 
 resource "aws_ec2_transit_gateway_route" "tgw2_to_vpc3" {
   provider                       = aws.us_east_2
-  destination_cidr_block         = "192.168.0.0/16"
+  destination_cidr_block         = "192.168.0.0/28"
   transit_gateway_route_table_id = aws_ec2_transit_gateway.tgw2.association_default_route_table_id
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_peering_attachment.peer_ue2_uw2.id
   depends_on                     = [aws_ec2_transit_gateway_peering_attachment_accepter.accept_ue2_uw2]
@@ -158,7 +158,7 @@ resource "aws_ec2_transit_gateway_route" "tgw2_default" {
 
 resource "aws_ec2_transit_gateway_route" "tgw3_to_vpc1" {
   provider                       = aws.us_west_2
-  destination_cidr_block         = "10.0.0.0/16"
+  destination_cidr_block         = "10.0.0.0/27"
   transit_gateway_route_table_id = aws_ec2_transit_gateway.tgw3.association_default_route_table_id
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_peering_attachment.peer_ue1_uw2.id
   depends_on                     = [aws_ec2_transit_gateway_peering_attachment_accepter.accept_ue1_uw2]
@@ -166,7 +166,7 @@ resource "aws_ec2_transit_gateway_route" "tgw3_to_vpc1" {
 
 resource "aws_ec2_transit_gateway_route" "tgw3_to_vpc2" {
   provider                       = aws.us_west_2
-  destination_cidr_block         = "172.16.0.0/16"
+  destination_cidr_block         = "172.16.0.0/28"
   transit_gateway_route_table_id = aws_ec2_transit_gateway.tgw3.association_default_route_table_id
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_peering_attachment.peer_ue2_uw2.id
   depends_on                     = [aws_ec2_transit_gateway_peering_attachment_accepter.accept_ue2_uw2]
@@ -189,7 +189,7 @@ resource "aws_ec2_transit_gateway_route" "tgw3_default" {
 resource "aws_route" "rt1_to_vpc2" {
   provider               = aws.us_east_1
   route_table_id         = var.rt1_id
-  destination_cidr_block = "172.16.0.0/16"
+  destination_cidr_block = "172.16.0.0/28"
   transit_gateway_id     = aws_ec2_transit_gateway.tgw1.id
   depends_on             = [aws_ec2_transit_gateway_vpc_attachment.vpc1_attach]
 }
@@ -197,7 +197,7 @@ resource "aws_route" "rt1_to_vpc2" {
 resource "aws_route" "rt1_to_vpc3" {
   provider               = aws.us_east_1
   route_table_id         = var.rt1_id
-  destination_cidr_block = "192.168.0.0/16"
+  destination_cidr_block = "192.168.0.0/28"
   transit_gateway_id     = aws_ec2_transit_gateway.tgw1.id
   depends_on             = [aws_ec2_transit_gateway_vpc_attachment.vpc1_attach]
 }
@@ -206,7 +206,7 @@ resource "aws_route" "rt1_to_vpc3" {
 resource "aws_route" "public_rt1_to_vpc2" {
   provider               = aws.us_east_1
   route_table_id         = var.public_rt1_id
-  destination_cidr_block = "172.16.0.0/16"
+  destination_cidr_block = "172.16.0.0/28"
   transit_gateway_id     = aws_ec2_transit_gateway.tgw1.id
   depends_on             = [aws_ec2_transit_gateway_vpc_attachment.vpc1_attach]
 }
@@ -214,7 +214,7 @@ resource "aws_route" "public_rt1_to_vpc2" {
 resource "aws_route" "public_rt1_to_vpc3" {
   provider               = aws.us_east_1
   route_table_id         = var.public_rt1_id
-  destination_cidr_block = "192.168.0.0/16"
+  destination_cidr_block = "192.168.0.0/28"
   transit_gateway_id     = aws_ec2_transit_gateway.tgw1.id
   depends_on             = [aws_ec2_transit_gateway_vpc_attachment.vpc1_attach]
 }
@@ -231,7 +231,7 @@ resource "aws_route" "rt2_default" {
 resource "aws_route" "rt2_to_vpc1" {
   provider               = aws.us_east_2
   route_table_id         = var.rt2_id
-  destination_cidr_block = "10.0.0.0/16"
+  destination_cidr_block = "10.0.0.0/27"
   transit_gateway_id     = aws_ec2_transit_gateway.tgw2.id
   depends_on             = [aws_ec2_transit_gateway_vpc_attachment.vpc2_attach]
 }
@@ -239,7 +239,7 @@ resource "aws_route" "rt2_to_vpc1" {
 resource "aws_route" "rt2_to_vpc3" {
   provider               = aws.us_east_2
   route_table_id         = var.rt2_id
-  destination_cidr_block = "192.168.0.0/16"
+  destination_cidr_block = "192.168.0.0/28"
   transit_gateway_id     = aws_ec2_transit_gateway.tgw2.id
   depends_on             = [aws_ec2_transit_gateway_vpc_attachment.vpc2_attach]
 }
@@ -256,7 +256,7 @@ resource "aws_route" "rt3_default" {
 resource "aws_route" "rt3_to_vpc1" {
   provider               = aws.us_west_2
   route_table_id         = var.rt3_id
-  destination_cidr_block = "10.0.0.0/16"
+  destination_cidr_block = "10.0.0.0/27"
   transit_gateway_id     = aws_ec2_transit_gateway.tgw3.id
   depends_on             = [aws_ec2_transit_gateway_vpc_attachment.vpc3_attach]
 }
@@ -264,7 +264,7 @@ resource "aws_route" "rt3_to_vpc1" {
 resource "aws_route" "rt3_to_vpc2" {
   provider               = aws.us_west_2
   route_table_id         = var.rt3_id
-  destination_cidr_block = "172.16.0.0/16"
+  destination_cidr_block = "172.16.0.0/28"
   transit_gateway_id     = aws_ec2_transit_gateway.tgw3.id
   depends_on             = [aws_ec2_transit_gateway_vpc_attachment.vpc3_attach]
 }
