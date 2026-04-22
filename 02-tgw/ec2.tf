@@ -8,7 +8,7 @@ resource "aws_instance" "vpc1_instance" {
   ami                    = data.aws_ssm_parameter.al2023_us_east_1.value
   instance_type          = "t3.micro"
   subnet_id              = var.subnet1_id
-  vpc_security_group_ids = [var.sg1_id]
+  vpc_security_group_ids = [aws_security_group.sg1.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_ssm_profile.name
 
   user_data = <<-EOF
@@ -31,7 +31,7 @@ resource "aws_instance" "vpc2_instance" {
   ami                    = data.aws_ssm_parameter.al2023_us_east_2.value
   instance_type          = "t3.micro"
   subnet_id              = var.subnet2_id
-  vpc_security_group_ids = [var.sg2_id]
+  vpc_security_group_ids = [aws_security_group.sg2.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_ssm_profile.name
 
   user_data = <<-EOF
@@ -54,7 +54,7 @@ resource "aws_instance" "vpc3_instance" {
   ami                    = data.aws_ssm_parameter.al2023_us_west_2.value
   instance_type          = "t3.micro"
   subnet_id              = var.subnet3_id
-  vpc_security_group_ids = [var.sg3_id]
+  vpc_security_group_ids = [aws_security_group.sg3.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_ssm_profile.name
 
   user_data = <<-EOF

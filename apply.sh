@@ -3,8 +3,8 @@
 # apply.sh
 # ==============================================================================
 # Deploys the transit gateway demo in two stages:
-#   01-networking : VPCs, subnets, IGWs, route tables, security groups
-#   02-tgw        : Transit Gateways, peering, routes, EC2 instances
+#   01-networking : VPCs, subnets, IGWs, route tables
+#   02-tgw        : Transit Gateways, peering, routes, security groups, EC2 instances
 #
 # Requires: aws, terraform, jq
 # ==============================================================================
@@ -20,7 +20,7 @@ echo "NOTE: Running environment validation..."
 # ==============================================================================
 # STAGE 01 — NETWORKING
 # ==============================================================================
-echo "NOTE: Stage 01 — provisioning VPCs, subnets, and security groups..."
+echo "NOTE: Stage 01 — provisioning VPCs, subnets, and route tables..."
 
 pushd 01-networking > /dev/null
 terraform init
@@ -39,10 +39,6 @@ RT2_ID=$(terraform output -raw rt2_id)
 RT3_ID=$(terraform output -raw rt3_id)
 
 PUBLIC_RT1_ID=$(terraform output -raw public_rt1_id)
-
-SG1_ID=$(terraform output -raw sg1_id)
-SG2_ID=$(terraform output -raw sg2_id)
-SG3_ID=$(terraform output -raw sg3_id)
 popd > /dev/null
 
 echo "NOTE: vpc1=${VPC1_ID}  vpc2=${VPC2_ID}  vpc3=${VPC3_ID}"
@@ -64,10 +60,7 @@ terraform apply -auto-approve \
   -var="rt1_id=${RT1_ID}"               \
   -var="rt2_id=${RT2_ID}"               \
   -var="rt3_id=${RT3_ID}"               \
-  -var="public_rt1_id=${PUBLIC_RT1_ID}" \
-  -var="sg1_id=${SG1_ID}"               \
-  -var="sg2_id=${SG2_ID}"         \
-  -var="sg3_id=${SG3_ID}"
+  -var="public_rt1_id=${PUBLIC_RT1_ID}"
 popd > /dev/null
 
 # Wait for instances to finish user-data (nginx install + SSM registration)

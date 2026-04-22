@@ -15,7 +15,3 @@ output "rt3_id" { value = aws_route_table.private_rt3.id }
 # VPC1 public route table — needs spoke return routes added in stage 2
 # so NAT Gateway can send return traffic back through TGW to VPC2/VPC3
 output "public_rt1_id" { value = aws_route_table.public_rt1.id }
-
-output "sg1_id" { value = aws_security_group.sg1.id }
-output "sg2_id" { value = aws_security_group.sg2.id }
-output "sg3_id" { value = aws_security_group.sg3.id }

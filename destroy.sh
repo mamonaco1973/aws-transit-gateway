@@ -28,10 +28,6 @@ RT2_ID=$(terraform output -raw rt2_id)
 RT3_ID=$(terraform output -raw rt3_id)
 
 PUBLIC_RT1_ID=$(terraform output -raw public_rt1_id)
-
-SG1_ID=$(terraform output -raw sg1_id)
-SG2_ID=$(terraform output -raw sg2_id)
-SG3_ID=$(terraform output -raw sg3_id)
 popd > /dev/null
 
 pushd 02-tgw > /dev/null
@@ -46,10 +42,7 @@ terraform destroy -auto-approve \
   -var="rt1_id=${RT1_ID}"                 \
   -var="rt2_id=${RT2_ID}"                 \
   -var="rt3_id=${RT3_ID}"                 \
-  -var="public_rt1_id=${PUBLIC_RT1_ID}"   \
-  -var="sg1_id=${SG1_ID}"                 \
-  -var="sg2_id=${SG2_ID}"                 \
-  -var="sg3_id=${SG3_ID}"
+  -var="public_rt1_id=${PUBLIC_RT1_ID}"
 popd > /dev/null
 
 # ------------------------------------------------------------------------------

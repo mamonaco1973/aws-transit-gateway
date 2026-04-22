@@ -7,7 +7,7 @@ resource "aws_security_group" "sg1" {
   provider    = aws.us_east_1
   name        = "tgw-demo-sg1"
   description = "Allow HTTP from VPC CIDRs, unrestricted egress"
-  vpc_id      = aws_vpc.vpc1.id
+  vpc_id      = var.vpc1_id
 
   ingress {
     from_port   = 80
@@ -30,7 +30,7 @@ resource "aws_security_group" "sg2" {
   provider    = aws.us_east_2
   name        = "tgw-demo-sg2"
   description = "Allow HTTP from VPC CIDRs, unrestricted egress"
-  vpc_id      = aws_vpc.vpc2.id
+  vpc_id      = var.vpc2_id
 
   ingress {
     from_port   = 80
@@ -53,7 +53,7 @@ resource "aws_security_group" "sg3" {
   provider    = aws.us_west_2
   name        = "tgw-demo-sg3"
   description = "Allow HTTP from VPC CIDRs, unrestricted egress"
-  vpc_id      = aws_vpc.vpc3.id
+  vpc_id      = var.vpc3_id
 
   ingress {
     from_port   = 80
