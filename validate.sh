@@ -26,6 +26,44 @@ echo "NOTE: VPC2 us-east-2  instance=${VPC2_ID}  ip=${VPC2_IP}"
 echo "NOTE: VPC3 us-west-2  instance=${VPC3_ID}  ip=${VPC3_IP}"
 
 # ------------------------------------------------------------------------------
+# Wait until an instance reports Online in SSM before sending commands to it
+# VPC2/VPC3 route SSM traffic cross-region through TGW, so registration is slower
+# ------------------------------------------------------------------------------
+wait_for_ssm() {
+  local instance_id="$1"
+  local region="$2"
+  local label="$3"
+  local attempts=0
+
+  echo "NOTE: Waiting for SSM on ${label} (${instance_id})..."
+  while true; do
+    status=$(aws ssm describe-instance-information \
+      --filters "Key=InstanceIds,Values=${instance_id}" \
+      --region "${region}" \
+      --query "InstanceInformationList[0].PingStatus" \
+      --output text 2>/dev/null || true)
+
+    if [[ "$status" == "Online" ]]; then
+      echo "NOTE: ${label} is SSM-ready."
+      return 0
+    fi
+
+    attempts=$(( attempts + 1 ))
+    if (( attempts >= 36 )); then
+      echo "ERROR: ${label} did not become SSM-ready after 6 minutes. Aborting."
+      exit 1
+    fi
+
+    echo "NOTE: ${label} not ready yet (status=${status:-not registered}), retrying in 10s..."
+    sleep 10
+  done
+}
+
+wait_for_ssm "${VPC1_ID}" "us-east-1" "VPC1 us-east-1"
+wait_for_ssm "${VPC2_ID}" "us-east-2" "VPC2 us-east-2"
+wait_for_ssm "${VPC3_ID}" "us-west-2" "VPC3 us-west-2"
+
+# ------------------------------------------------------------------------------
 # Helper: send an SSM shell command, wait for it, and print the output
 # ------------------------------------------------------------------------------
 run_ssm_check() {
