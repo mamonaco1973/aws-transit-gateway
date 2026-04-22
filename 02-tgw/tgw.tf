@@ -4,7 +4,7 @@
 
 resource "aws_ec2_transit_gateway" "tgw1" {
   provider    = aws.us_east_1
-  description = "TGW for VPC1 (10.0.0.0/16) in us-east-1 — internet egress hub"
+  description = "TGW for VPC1 (10.0.0.0/16) in us-east-1 - internet egress hub"
   tags = { Name = "tgw-demo-tgw1" }
 }
 
